@@ -1,0 +1,77 @@
+name: "MyST Accessibility Checks"
+description: 'Run axe-core accessibility checks on MyST site.'
+
+branding:
+  icon: 'check-square'
+  color: 'blue'
+
+inputs:
+  working_directory:
+    description: 'Relative path to the MyST project root'
+    required: false
+    default: '.'
+  base_url:  
+    description: 'MyST site base URL'
+    required: false
+    default: ''
+  tags:
+    description: 'Comma-separated list of axe-core tags to run (e.g., wcag2a,wcag2aa)'
+    required: false
+    default: 'wcag2a,wcag2aa,wcag21a,wcag21aa'
+  save_report:
+    description: 'Whether to save the axe report as an artifact'
+    required: false
+    default: 'true'
+  
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: 22.x
+
+    - name: Install Dependencies
+      shell: bash
+      run: |
+        # 1. Global tools needed for the action logic
+        npm install -g mystmd @axe-core/cli http-server wait-on
+        npx browser-driver-manager install chrome
+        
+        # Move to the user's specified directory
+        cd ${{ inputs.working_directory }}
+        
+        if [ -f "package.json" ]; then
+          echo "Detected package.json in ${{ inputs.working_directory }}. Installing..."
+          npm install
+        fi
+
+    - name: Build and Run Axe
+      shell: bash
+      run: |
+        cd ${{ inputs.working_directory }}
+        
+        # Ensure the build uses local node_modules if they exist
+        export PATH="$PATH:$(pwd)/node_modules/.bin"
+        
+        # Run the build
+        myst build --html
+        
+        mkdir -p staging${{ inputs.base_url }}
+        cp -r _build/html/* staging${{ inputs.base_url }}/
+        
+        npx http-server staging -p 8080 -s &
+        npx wait-on http://localhost:8080${{ inputs.base_url }}/
+        
+        cd _build/html
+        URLS=$(find . -name "*.html" -not -path "*/build/*" | sed 's|^\./||' | sed "s|^|http://localhost:8080${{ inputs.base_url }}/|" | tr '\n' ' ')
+        
+        axe $URLS --tags ${{ inputs.tags }} --save axe-report.json --exit
+
+    - name: Upload Accessibility Report
+      if: ${{ always() && inputs.save_report == 'true' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: axe-report
+        # Point to the specific location where 'axe' was executed
+        path: ${{ inputs.working_directory }}/_build/html/axe-report.json
