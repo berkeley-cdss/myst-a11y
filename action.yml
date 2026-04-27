@@ -38,12 +38,18 @@ runs:
         npm install -g mystmd @axe-core/cli http-server wait-on
         npx browser-driver-manager install chrome
         
-        # Move to the user's specified directory
+        # Handle dependencies being aware of environment
+        if [ "${{ inputs.working_directory }}" != "." ] && [ -f "package.json" ]; then
+          echo "Detected root package.json. Installing from root to support workspaces..."
+          # Install from root to ensure monorepo binaries are available
+          npm install
+        fi
+
         cd ${{ inputs.working_directory }}
         
         if [ -f "package.json" ]; then
           echo "Detected package.json in ${{ inputs.working_directory }}. Installing..."
-          npm install
+          npm install --prefer-offline
         fi
 
     - name: Build and Run Axe
@@ -52,7 +58,7 @@ runs:
         cd ${{ inputs.working_directory }}
         
         # Ensure the build uses local node_modules if they exist
-        export PATH="$PATH:$(pwd)/node_modules/.bin"
+        export PATH="$PATH:$(pwd)/node_modules/.bin:$(cd .. && pwd)/node_modules/.bin"
         
         # Run the build
         myst build --html
