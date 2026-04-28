@@ -22,6 +22,10 @@ inputs:
     description: 'Whether to save the axe report as an artifact'
     required: false
     default: 'true'
+  exclude:
+    description: 'CSS selectors to exclude from the check (comma-separated)'
+    required: false
+    default: ''
   
 runs:
   using: "composite"
@@ -56,14 +60,6 @@ runs:
       shell: bash
       run: |
         cd ${{ inputs.working_directory }}
-
-        # Check for axe configuration file in the working directory
-        CONFIG_PATH="$(pwd)/axe-config.json"
-        USE_CONFIG=false
-        if [ -f "$CONFIG_PATH" ]; then
-          USE_CONFIG=true
-          echo "Axe configuration found at $CONFIG_PATH"
-        fi
         
         # Ensure the build uses local node_modules if they exist
         export PATH="$PATH:$(pwd)/node_modules/.bin:$(cd .. && pwd)/node_modules/.bin"
@@ -80,11 +76,16 @@ runs:
         cd _build/html
         URLS=$(find . -name "*.html" -not -path "*/build/*" | sed 's|^\./||' | sed "s|^|http://localhost:8080${{ inputs.base_url }}/|" | tr '\n' ' ')
         
-        if [ "$USE_CONFIG" = true ]; then
-          axe $URLS --tags ${{ inputs.tags }} --config "$CONFIG_PATH" --save axe-report.json --exit
-        else
-          axe $URLS --tags ${{ inputs.tags }} --save axe-report.json --exit
+        # Initialize the axe command
+        AXE_CMD="npx axe $URLS --tags ${{ inputs.tags }} --save axe-report.json --exit"
+
+        # Append exclude if the user provided one
+        if [ -n "${{ inputs.exclude }}" ]; then
+          AXE_CMD="$AXE_CMD --exclude ${{ inputs.exclude }}"
         fi
+
+        # Execute the dynamic command
+        eval $AXE_CMD
 
     - name: Upload Accessibility Report
       if: ${{ always() && inputs.save_report == 'true' }}
