@@ -31,7 +31,7 @@ you only want to check WCAG 2.0 A and WCAG 2.0 AA, and you don't need to save th
         uses: berkeley-cdss/myst-a11@v1
         with:
           working_directory: 'content'
-          base_url: ${{ github.event.repository.name }}
+          base_url: '/${{ github.event.repository.name }}'
           tags: 'wcag2a,wcag2aa'
           save_report: 'false'
 ```
