@@ -76,18 +76,16 @@ runs:
         cd _build/html
         URLS=$(find . -name "*.html" -not -path "*/build/*" | sed 's|^\./||' | sed "s|^|http://localhost:8080${{ inputs.base_url }}/|" | tr '\n' ' ')
         
-        # Initialize the axe command
-        AXE_CMD="npx axe $URLS --tags ${{ inputs.tags }} --save axe-report.json --exit"
+        # Define the base command as an array
+        AXE_ARGS=("$URLS" "--tags" "${{ inputs.tags }}" "--save" "axe-report.json" "--exit")
 
-        
-
-        # Append exclude if the user provided one
+        # Add the exclude if it exists
         if [ -n "${{ inputs.exclude }}" ]; then
-          AXE_CMD="$AXE_CMD --exclude '${{ inputs.exclude }}'"
+          AXE_ARGS+=("--exclude" "${{ inputs.exclude }}")
         fi
 
-        # Execute the dynamic command
-        eval $AXE_CMD
+        # Execute without eval
+        npx axe "${AXE_ARGS[@]}"
 
     - name: Upload Accessibility Report
       if: ${{ always() && inputs.save_report == 'true' }}
