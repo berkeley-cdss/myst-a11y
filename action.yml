@@ -56,6 +56,14 @@ runs:
       shell: bash
       run: |
         cd ${{ inputs.working_directory }}
+
+        # Check for axe configuration file in the working directory
+        CONFIG_PATH="$(pwd)/axe-config.json"
+        USE_CONFIG=false
+        if [ -f "$CONFIG_PATH" ]; then
+          USE_CONFIG=true
+          echo "Axe configuration found at $CONFIG_PATH"
+        fi
         
         # Ensure the build uses local node_modules if they exist
         export PATH="$PATH:$(pwd)/node_modules/.bin:$(cd .. && pwd)/node_modules/.bin"
@@ -72,7 +80,11 @@ runs:
         cd _build/html
         URLS=$(find . -name "*.html" -not -path "*/build/*" | sed 's|^\./||' | sed "s|^|http://localhost:8080${{ inputs.base_url }}/|" | tr '\n' ' ')
         
-        axe $URLS --tags ${{ inputs.tags }} --save axe-report.json --exit
+        if [ "$USE_CONFIG" = true ]; then
+          axe $URLS --tags ${{ inputs.tags }} --config "$CONFIG_PATH" --save axe-report.json --exit
+        else
+          axe $URLS --tags ${{ inputs.tags }} --save axe-report.json --exit
+        fi
 
     - name: Upload Accessibility Report
       if: ${{ always() && inputs.save_report == 'true' }}
