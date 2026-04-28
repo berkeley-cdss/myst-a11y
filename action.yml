@@ -79,9 +79,11 @@ runs:
         # Initialize the axe command
         AXE_CMD="npx axe $URLS --tags ${{ inputs.tags }} --save axe-report.json --exit"
 
+        
+
         # Append exclude if the user provided one
         if [ -n "${{ inputs.exclude }}" ]; then
-          AXE_CMD="$AXE_CMD --exclude ${{ inputs.exclude }}"
+          AXE_CMD="$AXE_CMD --exclude '${{ inputs.exclude }}'"
         fi
 
         # Execute the dynamic command
