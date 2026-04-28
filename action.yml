@@ -77,7 +77,7 @@ runs:
         URLS=$(find . -name "*.html" -not -path "*/build/*" | sed 's|^\./||' | sed "s|^|http://localhost:8080${{ inputs.base_url }}/|" | tr '\n' ' ')
         
         # Define the base command as an array
-        AXE_ARGS=("$URLS" "--tags" "${{ inputs.tags }}" "--save" "axe-report.json" "--exit")
+        AXE_ARGS=("--tags" "${{ inputs.tags }}" "--save" "axe-report.json" "--exit")
 
         # Add the exclude if it exists
         if [ -n "${{ inputs.exclude }}" ]; then
@@ -85,7 +85,7 @@ runs:
         fi
 
         # Execute without eval
-        npx axe "${AXE_ARGS[@]}"
+        npx axe $URLS "${AXE_ARGS[@]}"
 
     - name: Upload Accessibility Report
       if: ${{ always() && inputs.save_report == 'true' }}
