@@ -28,7 +28,7 @@ you want to check WCAG 2.0 A and WCAG 2.0 AA, you don't want iframes with YouTub
 
 ```YAML
       - name: Run Accessibility Checks
-        uses: berkeley-cdss/myst-a11@v1
+        uses: berkeley-cdss/myst-a11y@v1
         with:
           working_directory: 'content'
           base_url: '/${{ github.event.repository.name }}'
