@@ -26,7 +26,11 @@ inputs:
     description: 'CSS selectors to exclude from the check (comma-separated)'
     required: false
     default: ''
-  
+  execute:
+    description: 'Whether to include the --execute flag for myst build'
+    required: false
+    default: 'false'
+
 runs:
   using: "composite"
   steps:
@@ -65,8 +69,12 @@ runs:
         export PATH="$PATH:$(pwd)/node_modules/.bin:$(cd .. && pwd)/node_modules/.bin"
         
         # Run the build
-        myst build --html
-        
+        if [ "${{ inputs.execute }}" == "true" ]; then
+          myst build --html --execute
+        else
+          myst build --html
+        fi
+
         mkdir -p staging${{ inputs.base_url }}
         cp -r _build/html/* staging${{ inputs.base_url }}/
         
