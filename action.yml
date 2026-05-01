@@ -39,10 +39,17 @@ runs:
       with:
         node-version: 22.x
 
+    - name: Set up Python
+      if: ${{ inputs.execute == 'true' }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
     - name: Install Dependencies
       shell: bash
       run: |
-        # 1. Global tools needed for the action logic
+        # Global tools needed for the action logic
         npm install -g mystmd @axe-core/cli http-server wait-on
         npx browser-driver-manager install chrome
         
@@ -53,7 +60,22 @@ runs:
           npm install
         fi
 
+        # If execution is requested, ensure Python and Jupyter are available
+        if [ "${{ inputs.execute }}" == "true" ]; then
+          pip install jupyterlab ipykernel
+          python -m ipykernel install --user --name python3
+          if [ -f "requirements.txt" ]; then
+            echo "Detected requirements.txt at repo root. Installing..."
+            pip install -r requirements.txt
+          fi
+        fi
+
         cd ${{ inputs.working_directory }}
+
+        if [ "${{ inputs.execute }}" == "true" ] && [ -f "requirements.txt" ]; then
+          echo "Detected requirements.txt in ${{ inputs.working_directory }}. Installing..."
+          pip install -r requirements.txt
+        fi
         
         if [ -f "package.json" ]; then
           echo "Detected package.json in ${{ inputs.working_directory }}. Installing..."
