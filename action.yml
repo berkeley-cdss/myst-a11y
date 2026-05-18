@@ -6,8 +6,16 @@ branding:
   color: 'blue'
 
 inputs:
+  run_build:
+    description: 'Should this action run the MyST build process?'
+    required: false
+    default: 'true'
+  build_directory:
+    description: 'Path to the built HTML directory (if run_build is false)'
+    required: false
+    default: '_build/html'
   working_directory:
-    description: 'Relative path to the MyST project root'
+    description: 'Relative path to the MyST project root (if run_build is true)'
     required: false
     default: '.'
   base_url:  
@@ -40,13 +48,14 @@ runs:
         node-version: 22.x
 
     - name: Set up Python
-      if: ${{ inputs.execute == 'true' }}
+      if: ${{ inputs.run_build == 'true' && inputs.execute == 'true' }}
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
         cache: 'pip'
 
     - name: Install Dependencies
+      if: ${{ inputs.run_build == 'true' }}
       shell: bash
       run: |
         # Global tools needed for the action logic
@@ -83,6 +92,7 @@ runs:
         fi
 
     - name: Build and Run Axe
+      if: ${{ inputs.run_build == 'true' }}
       shell: bash
       run: |
         cd ${{ inputs.working_directory }}
@@ -104,6 +114,30 @@ runs:
         npx wait-on http://localhost:8080${{ inputs.base_url }}/
         
         cd _build/html
+        URLS=$(find . -name "*.html" -not -path "*/build/*" | sed 's|^\./||' | sed "s|^|http://localhost:8080${{ inputs.base_url }}/|" | tr '\n' ' ')
+        
+        # Define the base command as an array
+        AXE_ARGS=("--tags" "${{ inputs.tags }}" "--save" "axe-report.json" "--exit")
+
+        # Add the exclude if it exists
+        if [ -n "${{ inputs.exclude }}" ]; then
+          AXE_ARGS+=("--exclude" "${{ inputs.exclude }}")
+        fi
+
+        # Execute without eval
+        npx axe $URLS "${AXE_ARGS[@]}"
+
+    - name: No Build, Run Axe
+      if: ${{ inputs.run_build == 'false' }}
+      shell: bash
+      run: |
+        mkdir -p staging${{ inputs.base_url }}
+        cp -r ${{ inputs.build_directory }}/* staging${{ inputs.base_url }}/
+        
+        npx http-server staging -p 8080 -s &
+        npx wait-on http://localhost:8080${{ inputs.base_url }}/
+        
+        cd ${{ inputs.build_directory }}
         URLS=$(find . -name "*.html" -not -path "*/build/*" | sed 's|^\./||' | sed "s|^|http://localhost:8080${{ inputs.base_url }}/|" | tr '\n' ' ')
         
         # Define the base command as an array
